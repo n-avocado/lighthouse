@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lighthouse · the Watch</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ============ TOKENS ============ */
+:root{
+  --bg:#fbfaf8;--surface:#fff;--surface-2:#f6f4ee;
+  --ink:#14130f;--ink-2:#54514a;--ink-3:#8a867d;--ink-4:#b3afa6;
+  --line:#e6e3dc;--line-2:#d2cec5;
+  --accent:#b8760f;--accent-tint:#fdf3e1;--accent-line:#e8cf9a;
+  --up:#4d7a5f;--up-tint:#eaf1ec;--down:#a24e3e;--down-tint:#f5e9e5;
+  --font:'Instrument Sans',-apple-system,BlinkMacSystemFont,sans-serif;
+  --mono:'JetBrains Mono',monospace;
+  --ease:cubic-bezier(.22,.68,0,1)
+}
+html.dark{
+  --bg:#141310;--surface:#1c1b17;--surface-2:#242320;
+  --ink:#e8e5dd;--ink-2:#a9a69e;--ink-3:#7a7870;--ink-4:#555349;
+  --line:#2e2d28;--line-2:#3a3935;
+  --accent:#d49a2a;--accent-tint:rgba(212,154,42,.12);--accent-line:rgba(212,154,42,.25);
+  --up:#6fa882;--up-tint:rgba(111,168,130,.12);--down:#d4756a;--down-tint:rgba(212,117,106,.12)
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14.5px;line-height:1.6;
+     -webkit-font-smoothing:antialiased;letter-spacing:-.005em;transition:background .3s,color .3s}
+
+/* ============ SCREEN SYSTEM ============ */
+.scr{display:none;min-height:100vh;opacity:0;transition:opacity .35s}
+.scr.on{display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:1}
+.scr.on.no-center{align-items:stretch;justify-content:stretch}
+@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* ============ GATE (Screen 1) ============ */
+.gate{max-width:680px;width:100%;padding:40px 24px;text-align:center}
+.gate-badge{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;
+    letter-spacing:.06em;text-transform:uppercase;color:var(--accent);margin-bottom:28px}
+.gate h1{font-size:clamp(28px,5vw,40px);font-weight:700;line-height:1.15;letter-spacing:-.03em;margin-bottom:10px}
+.gate .sub{font-size:15px;color:var(--ink-2);max-width:44ch;margin:0 auto 40px;line-height:1.65}
+.doors{display:grid;grid-template-columns:1fr 1fr;gap:14px;text-align:left}
+.door{padding:24px;background:var(--surface);border:1.5px solid var(--line);border-radius:12px;cursor:pointer;
+    transition:border-color .15s,box-shadow .15s}
+.door:hover{border-color:var(--ink-4)}
+.door.picked{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-tint)}
+.door.off{opacity:.4;pointer-events:none;position:relative}
+.door-h{font-size:16px;font-weight:600;margin-bottom:4px;letter-spacing:-.01em}
+.door-p{font-size:13px;color:var(--ink-2);line-height:1.6}
+.door-off{position:absolute;top:12px;right:12px;font-size:10px;font-weight:600;color:var(--ink-3);
+    background:var(--surface-2);border:1px solid var(--line);border-radius:4px;padding:2px 7px;letter-spacing:.03em}
+.gate-go{margin-top:24px;display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:600;
+    padding:12px 28px;border-radius:8px;background:var(--ink);color:var(--bg);border:none;cursor:pointer;
+    font-family:var(--font);transition:opacity .15s}
+.gate-go:hover{opacity:.85}
+.gate-go:disabled{opacity:.25;pointer-events:none}
+.gate-test{font-size:12px;color:var(--ink-3);margin-top:16px}
+.gate-test a{color:var(--accent);text-decoration:none}
+
+/* ============ CHALLENGE (Screen 2) ============ */
+.challenge{max-width:580px;width:100%;padding:40px 24px}
+.ch-back{background:none;border:none;font-size:13px;color:var(--ink-3);cursor:pointer;font-family:var(--font);margin-bottom:28px}
+.ch-back:hover{color:var(--ink)}
+.challenge h2{font-size:24px;font-weight:600;letter-spacing:-.02em;margin-bottom:6px}
+.challenge .ch-sub{font-size:14px;color:var(--ink-2);margin-bottom:28px;line-height:1.6}
+.ch-field{margin-bottom:16px}
+.ch-field label{display:block;font-size:12px;font-weight:500;color:var(--ink-2);margin-bottom:5px}
+.ch-field input,.ch-field textarea{width:100%;font-family:var(--font);font-size:14px;color:var(--ink);
+    background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:11px 13px;outline:none;
+    transition:border-color .15s}
+.ch-field input:focus,.ch-field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-tint)}
+.ch-field textarea{resize:vertical;min-height:100px;line-height:1.6}
+.ch-hint{font-size:11.5px;color:var(--ink-4);margin-top:4px}
+.ch-tier{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:24px;margin-bottom:20px}
+.tier-card{padding:14px 16px;background:var(--surface);border:1.5px solid var(--line);border-radius:10px;cursor:pointer;transition:border-color .15s}
+.tier-card.picked{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-tint)}
+.tier-card.off{opacity:.35;pointer-events:none}
+.tier-name{font-size:13px;font-weight:600;margin-bottom:2px}
+.tier-desc{font-size:11.5px;color:var(--ink-3);line-height:1.5}
+.tier-off{font-size:10px;color:var(--ink-4);margin-top:4px}
+
+/* ============ FIRST ANSWER (Screen 3) ============ */
+.answer-wrap{max-width:680px;width:100%;padding:40px 24px}
+.answer-wrap .ans-tag{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:16px}
+.answer-wrap h2{font-size:22px;font-weight:600;letter-spacing:-.015em;margin-bottom:6px;line-height:1.3}
+.answer-wrap .ans-sub{font-size:14px;color:var(--ink-2);margin-bottom:28px;line-height:1.6}
+.layer{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px 22px;
+    margin-bottom:10px;animation:rise .4s var(--ease) both}
+.layer:nth-child(2){animation-delay:.06s}.layer:nth-child(3){animation-delay:.12s}
+.layer:nth-child(4){animation-delay:.18s}.layer:nth-child(5){animation-delay:.24s}
+.layer:nth-child(6){animation-delay:.3s}.layer:nth-child(7){animation-delay:.36s}
+.layer-num{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--accent);margin-bottom:6px}
+.layer-h{font-size:14px;font-weight:600;margin-bottom:6px;letter-spacing:-.005em}
+.layer-body{font-size:13.5px;color:var(--ink-2);line-height:1.7}
+.layer-body .jargon{color:var(--ink-3);font-size:12px;font-style:italic}
+.ev-state{display:inline-flex;font-family:var(--mono);font-size:10px;font-weight:500;color:var(--accent);
+    background:var(--accent-tint);border:1px solid var(--accent-line);padding:1px 7px;border-radius:3px;margin-left:4px}
+.ev-state.fog{color:var(--ink-3);background:var(--surface-2);border-color:var(--line)}
+/* Voice bar inside answer */
+.ans-voice{margin-top:20px;padding:16px 18px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;
+    display:flex;align-items:center;gap:14px}
+.ans-voice .v-play{width:36px;height:36px;border-radius:50%;background:var(--ink);color:var(--bg);border:none;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.ans-voice .v-play:hover{opacity:.8}
+.ans-voice .v-info{flex:1;min-width:0}
+.ans-voice .v-title{font-size:13px;font-weight:500;color:var(--ink)}
+.ans-voice .v-meta{font-size:11px;color:var(--ink-3);font-family:var(--mono);margin-top:2px}
+.ans-voice .v-speeds{display:flex;gap:5px;flex-shrink:0}
+.ans-voice .spd{font-size:11px;font-weight:600;padding:3px 8px;border-radius:4px;cursor:pointer;
+    background:var(--surface);border:1px solid var(--line);color:var(--ink-2);font-family:var(--mono)}
+.ans-voice .spd.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.ans-voice .lang-tag{font-size:10.5px;color:var(--ink-3);font-style:italic;margin-left:6px}
+/* CTA after answer */
+.ans-cta{margin-top:24px;text-align:center}
+.ans-cta-btn{display:inline-flex;align-items:center;gap:8px;font-size:14px;font-weight:600;
+    padding:13px 32px;border-radius:8px;background:var(--ink);color:var(--bg);border:none;cursor:pointer;font-family:var(--font)}
+.ans-cta-btn:hover{opacity:.85}
+.ans-cta-note{font-size:12px;color:var(--ink-3);margin-top:10px}
+.ans-trust{margin-top:20px;display:flex;align-items:center;gap:16px;flex-wrap:wrap;justify-content:center}
+.trust-pill{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--ink-3);
+    background:var(--surface);border:1px solid var(--line);padding:5px 10px;border-radius:6px}
+.trust-pill .tp-dot{width:6px;height:6px;border-radius:50%}
+.trust-pill .tp-dot.match{background:var(--up)}.trust-pill .tp-dot.close{background:var(--accent)}.trust-pill .tp-dot.diff{background:var(--down)}
+
+/* ============ DASHBOARD (Screen 4) ============ */
+.app{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+.rail{background:var(--surface);border-right:1px solid var(--line);padding:20px 16px;display:flex;
+    flex-direction:column;gap:18px;position:sticky;top:0;height:100vh;overflow-y:auto;transition:background .3s,border-color .3s}
+.brand{display:flex;align-items:center;gap:10px;padding:4px 6px}
+.brand-name{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.watch-chip{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);
+    background:var(--accent-tint);border:1px solid var(--accent-line);padding:2px 7px;border-radius:3px;margin-left:auto}
+.paid-tag{font-size:9px;font-weight:600;letter-spacing:.1em;color:var(--bg);background:var(--accent);
+    padding:2px 6px;border-radius:3px;margin-left:4px}
+.lamp{width:24px;height:24px;position:relative;display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
+.lamp .l-outer{position:absolute;width:24px;height:24px;border-radius:50%;border:1px solid var(--line)}
+.lamp .l-mid{position:absolute;width:16px;height:16px;border-radius:50%;border:1px solid var(--ink-4)}
+.lamp .l-core{width:8px;height:8px;border-radius:50%;background:var(--accent);transition:box-shadow .3s}
+.lamp.lit .l-core{box-shadow:0 0 8px 3px var(--accent-tint),0 0 16px 6px rgba(184,118,15,.1)}
+html.dark .lamp.lit .l-core{box-shadow:0 0 10px 4px rgba(212,154,42,.25),0 0 24px 8px rgba(212,154,42,.12)}
+
+.biz-card{padding:12px;background:var(--surface-2);border:1px solid var(--line);border-radius:9px;text-align:center;transition:background .3s,border-color .3s}
+.biz-name{font-size:13px;font-weight:600;letter-spacing:-.01em}
+.biz-cat{font-size:11px;color:var(--ink-3);margin-top:1px}
+
+.nav{display:flex;flex-direction:column;gap:1px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:7px;font-size:13px;
+    font-weight:500;color:var(--ink-2);cursor:pointer;transition:background .15s,color .15s;
+    background:none;border:none;text-align:left;font-family:var(--font);width:100%}
+.nav-item:hover{background:var(--surface-2);color:var(--ink)}
+.nav-item.active{background:var(--surface-2);color:var(--ink)}
+.nav-item .n-badge{margin-left:auto;font-size:10px;font-weight:600;color:var(--accent);
+    background:var(--accent-tint);border-radius:3px;padding:1px 5px}
+.rail-foot{margin-top:auto;padding-top:12px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:4px}
+.rf{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--ink-3);padding:6px;border-radius:5px;cursor:pointer;background:none;border:none;font-family:var(--font);width:100%;text-align:left}
+.rf:hover{background:var(--surface-2)}
+.rf svg{flex-shrink:0}
+/* Dark mode toggle */
+.dm-toggle{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--ink-3);padding:6px;cursor:pointer;background:none;border:none;font-family:var(--font);width:100%;text-align:left;border-radius:5px}
+.dm-toggle:hover{background:var(--surface-2)}
+.dm-switch{width:32px;height:18px;border-radius:9px;background:var(--line);position:relative;flex-shrink:0;transition:background .2s}
+.dm-switch::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;
+    background:var(--surface);transition:transform .2s}
+html.dark .dm-switch{background:var(--accent)}
+html.dark .dm-switch::after{transform:translateX(14px)}
+
+/* MAIN */
+.dash-main{padding:28px 36px 60px;max-width:1100px;margin:0 auto;width:100%;transition:background .3s}
+.dash-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;margin-bottom:24px}
+.dash-head .dh-left{flex:1}
+.dh-date{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:5px}
+.dash-head h1{font-size:24px;font-weight:600;letter-spacing:-.02em;line-height:1.2}
+.dh-line{font-size:14px;color:var(--ink-2);margin-top:5px;max-width:56ch}
+.dh-btns{display:flex;gap:8px}
+.dh-btn{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:7px 12px;
+    border-radius:6px;background:var(--surface);border:1px solid var(--line);cursor:pointer;color:var(--ink-2);font-family:var(--font);transition:background .15s,border-color .15s,color .15s}
+.dh-btn:hover{color:var(--ink);border-color:var(--line-2)}
+.dh-btn svg{color:var(--accent)}
+
+/* ============ VIEWS ============ */
+.view{display:none}
+.view.on{display:block;animation:rise .3s var(--ease) both}
+
+/* ---- HERO ---- */
+.hero{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:26px 30px;
+    margin-bottom:18px;position:relative;overflow:hidden;transition:background .3s,border-color .3s}
+.hero::before{content:'';position:absolute;top:-40px;right:-40px;width:180px;height:180px;
+    background:radial-gradient(circle,var(--accent-tint) 0%,transparent 70%);opacity:.4}
+.hero-inner{position:relative}
+.hero-label{display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.hero-tag{font-size:10.5px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.hero-week{font-size:11.5px;color:var(--ink-3)}
+.hero h2{font-size:20px;font-weight:600;letter-spacing:-.018em;line-height:1.3;max-width:44ch}
+.hero-why{margin-top:10px;font-size:13.5px;color:var(--ink-2);max-width:56ch;line-height:1.65}
+.hero-acts{margin-top:16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.h-btn{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:500;padding:8px 14px;
+    border-radius:7px;cursor:pointer;font-family:var(--font);transition:background .15s}
+.h-btn-p{background:var(--ink);color:var(--bg);border:1px solid var(--ink)}.h-btn-p:hover{opacity:.85}
+.h-btn-g{background:var(--surface);color:var(--ink-2);border:1px solid var(--line)}.h-btn-g:hover{background:var(--surface-2)}
+.hero-ev{margin-top:12px;font-size:11px;color:var(--ink-3);display:flex;align-items:center;gap:8px}
+
+/* ---- DELTA ---- */
+.deltas{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.d-card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;transition:background .3s,border-color .3s}
+.d-head{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.d-arr{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:4px;
+    font-size:11px;font-weight:700}
+.d-arr.up{background:var(--up-tint);color:var(--up)}.d-arr.dn{background:var(--down-tint);color:var(--down)}
+.d-arr.fl{background:var(--surface-2);color:var(--ink-3)}
+.d-src{font-size:11px;color:var(--ink-3)}
+.d-hl{font-size:13.5px;font-weight:500;margin-bottom:3px;letter-spacing:-.008em}
+.d-det{font-size:12px;color:var(--ink-2);line-height:1.55}
+.d-since{font-size:10.5px;color:var(--ink-4);margin-top:6px;font-family:var(--mono)}
+
+/* ---- GRID LAYOUT ---- */
+.g2{display:grid;grid-template-columns:1fr 320px;gap:18px;margin-bottom:18px}
+.g2-left,.g2-right{display:flex;flex-direction:column;gap:18px}
+
+/* ---- PANELS ---- */
+.pan{background:var(--surface);border:1px solid var(--line);border-radius:11px;overflow:hidden;transition:background .3s,border-color .3s}
+.pan-h{padding:18px 22px 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:14px}
+.pan-t{flex:1}.pan-ey{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
+.pan-hh{font-size:15.5px;font-weight:600;letter-spacing:-.012em;line-height:1.3}
+.pan-sub{font-size:12px;color:var(--ink-3);margin-top:4px;line-height:1.5;max-width:52ch}
+.pan-act{font-size:11.5px;color:var(--accent);font-weight:500;background:none;border:none;cursor:pointer;font-family:var(--font);flex-shrink:0}
+.pan-act:hover{text-decoration:underline}
+.pan-b{padding:0 22px 20px}
+
+/* ---- AEO TABLE ---- */
+.aeo-t{width:100%;border-collapse:collapse;margin-top:6px}
+.aeo-t th{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);
+    text-align:left;padding:8px 8px 8px 0;border-bottom:1px solid var(--line)}
+.aeo-t th:nth-child(n+2){text-align:center;width:80px}
+.aeo-t td{padding:10px 8px 10px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+.aeo-t td:nth-child(n+2){text-align:center}
+.aeo-t tr:last-child td{border-bottom:none}
+.aeo-q{color:var(--ink);font-weight:500}
+.aeo-q .peers{font-size:10.5px;color:var(--ink-3);font-weight:400;margin-top:1px;display:block}
+.rk{display:inline-flex;align-items:center;justify-content:center;min-width:28px;height:20px;padding:0 6px;
+    border-radius:4px;font-size:11px;font-weight:600;font-family:var(--mono)}
+.rk.top{background:var(--up-tint);color:var(--up)}.rk.mid{background:var(--accent-tint);color:var(--accent)}
+.rk.low{background:var(--down-tint);color:var(--down)}.rk.none{background:var(--surface-2);color:var(--ink-4)}
+.aeo-fix{margin-top:16px;padding:14px 16px;background:var(--surface-2);border-radius:8px;transition:background .3s}
+.aeo-fix-h{font-size:11.5px;font-weight:600;color:var(--ink);margin-bottom:6px}
+.aeo-fix ol{list-style:none;counter-reset:s;padding:0}
+.aeo-fix li{counter-increment:s;padding-left:24px;padding-bottom:6px;font-size:12.5px;color:var(--ink-2);line-height:1.55;position:relative}
+.aeo-fix li:last-child{padding-bottom:0}
+.aeo-fix li::before{content:counter(s);position:absolute;left:0;top:1px;width:16px;height:16px;border-radius:50%;
+    background:var(--ink);color:var(--bg);font-size:10px;font-weight:600;display:flex;align-items:center;justify-content:center;font-family:var(--mono)}
+
+/* ---- LLM CHECK ---- */
+.llm-tabs{display:flex;gap:6px;margin-top:12px}
+.llm-tab{font-size:11.5px;font-weight:500;padding:5px 10px;border-radius:5px;cursor:pointer;
+    background:var(--surface-2);color:var(--ink-2);border:1px solid transparent;font-family:var(--font)}
+.llm-tab.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.llm-tab:hover:not(.on){color:var(--ink)}
+.llm-cmp{margin-top:14px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.llm-a{padding:14px 16px;border-radius:8px;background:var(--surface-2);border:1px solid var(--line);transition:background .3s,border-color .3s}
+.llm-a.us{background:var(--accent-tint);border-color:var(--accent-line)}
+.llm-ah{font-size:10.5px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);margin-bottom:6px}
+.llm-a.us .llm-ah{color:var(--accent)}
+.llm-a p{font-size:12.5px;color:var(--ink-2);line-height:1.6}
+.llm-trust{margin-top:12px;display:flex;gap:8px;flex-wrap:wrap}
+.t-score{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:4px 9px;border-radius:5px;
+    background:var(--surface);border:1px solid var(--line)}
+.t-score .t-dot{width:7px;height:7px;border-radius:50%}
+.t-score .t-dot.match{background:var(--up)}.t-score .t-dot.close{background:var(--accent)}.t-score .t-dot.diff{background:var(--down)}
+.llm-why{margin-top:12px;padding:10px 14px;background:var(--surface-2);border-left:2px solid var(--accent);
+    border-radius:0 6px 6px 0;font-size:12px;color:var(--ink-2);line-height:1.6;transition:background .3s}
+.llm-why b{color:var(--ink);font-weight:600}
+
+/* ---- DECISIONS ---- */
+.dec-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+.dec{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--surface-2);border-radius:7px;transition:background .3s}
+.dec-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;margin-top:5px}
+.dec-dot.ok{background:var(--up)}.dec-dot.wait{background:var(--accent)}.dec-dot.rev{background:var(--ink-3)}
+.dec-t{font-size:12.5px;font-weight:500;color:var(--ink);line-height:1.4}
+.dec-m{font-size:10.5px;color:var(--ink-3);margin-top:2px;font-family:var(--mono)}
+
+/* ---- VOICE (compact) ---- */
+.voice-c{padding:14px 16px;background:var(--surface-2);border:1px solid var(--line);border-radius:9px;
+    display:flex;align-items:center;gap:12px;margin-top:10px;transition:background .3s,border-color .3s}
+.v-play{width:32px;height:32px;border-radius:50%;background:var(--ink);color:var(--bg);border:none;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0}
+.v-play:hover{opacity:.8}
+.v-info{flex:1;min-width:0}
+.v-title{font-size:12px;font-weight:500;color:var(--ink)}
+.v-meta{font-size:10.5px;color:var(--ink-3);font-family:var(--mono);margin-top:1px}
+.v-speeds{display:flex;gap:4px;flex-shrink:0}
+.spd{font-size:10.5px;font-weight:600;padding:3px 7px;border-radius:3px;cursor:pointer;
+    background:var(--surface);border:1px solid var(--line);color:var(--ink-2);font-family:var(--mono)}
+.spd.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.lang-tag{font-size:10px;color:var(--ink-3);font-style:italic;margin-left:4px}
+
+/* ---- COMPOUND ---- */
+.comp{display:flex;align-items:center;gap:10px;margin-top:10px;padding:12px 14px;
+    background:var(--accent-tint);border:1px solid var(--accent-line);border-radius:8px}
+.comp-n{font-size:22px;font-weight:700;color:var(--accent);line-height:1}
+.comp-txt{font-size:12px;color:var(--ink-2);line-height:1.45}
+.comp-txt b{color:var(--ink);font-weight:600}
+
+/* ---- NOTES ---- */
+.note-tabs{display:flex;gap:4px;margin-top:10px}
+.note-tab{font-size:11.5px;font-weight:500;padding:5px 10px;border-radius:5px;cursor:pointer;
+    background:var(--surface-2);color:var(--ink-2);border:none;font-family:var(--font)}
+.note-tab.on{background:var(--ink);color:var(--bg)}
+.notes{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.note{padding:10px 12px;background:var(--surface-2);border-radius:7px;border-left:2px solid var(--accent);transition:background .3s}
+.note-ctx{font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--ink-3);margin-bottom:3px}
+.note-body{font-size:12px;color:var(--ink-2);line-height:1.5}
+.note-date{font-size:10px;color:var(--ink-4);margin-top:3px;font-family:var(--mono)}
+.note-add{width:100%;padding:8px;font-size:11.5px;color:var(--ink-3);background:none;border:1px dashed var(--line);
+    border-radius:6px;cursor:pointer;margin-top:6px;font-family:var(--font)}
+.note-add:hover{color:var(--ink-2);border-color:var(--ink-4)}
+
+/* ---- PEERS ---- */
+.peer{padding:12px 0;border-bottom:1px solid var(--line);display:flex;align-items:flex-start;gap:12px}
+.peer:last-child{border-bottom:none}
+.peer-ic{width:30px;height:30px;background:var(--surface-2);border-radius:7px;display:flex;align-items:center;
+    justify-content:center;font-size:11px;font-weight:600;color:var(--ink-2);flex-shrink:0}
+.peer-b{flex:1;min-width:0}
+.peer-nr{display:flex;align-items:center;gap:6px}
+.peer-n{font-size:13px;font-weight:600;color:var(--ink)}
+.peer-tag{font-size:9px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;padding:2px 5px;border-radius:2px}
+.peer-tag.launch{background:var(--up-tint);color:var(--up)}.peer-tag.pricing{background:var(--accent-tint);color:var(--accent)}
+.peer-tag.press{background:var(--surface-2);color:var(--ink-2);border:1px solid var(--line)}
+.peer-chg{font-size:12px;color:var(--ink-2);margin-top:3px;line-height:1.5}
+.peer-w{font-size:10px;color:var(--ink-4);font-family:var(--mono);margin-top:4px}
+
+/* ---- MEETINGS ---- */
+.mtg{padding:10px 12px;background:var(--surface-2);border-radius:7px;display:flex;align-items:flex-start;gap:10px;margin-bottom:6px;transition:background .3s}
+.mtg-time{font-size:11px;font-weight:600;color:var(--accent);font-family:var(--mono);flex-shrink:0;width:50px;padding-top:2px}
+.mtg-b{flex:1}
+.mtg-t{font-size:12.5px;font-weight:500;color:var(--ink)}
+.mtg-d{font-size:11px;color:var(--ink-3);margin-top:2px}
+.mtg-tags{display:flex;gap:4px;margin-top:4px}
+.mtg-tag{font-size:9.5px;font-weight:500;padding:2px 6px;border-radius:3px;background:var(--surface);border:1px solid var(--line);color:var(--ink-3)}
+.gcal-btn{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:500;padding:8px 14px;
+    border-radius:6px;background:var(--surface);border:1px solid var(--line);cursor:pointer;color:var(--ink-2);
+    font-family:var(--font);margin-top:10px}
+.gcal-btn:hover{border-color:var(--line-2);color:var(--ink)}
+
+/* ---- RETURN STRIP ---- */
+.ret{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.ret-c{background:var(--surface);border:1px solid var(--line);border-radius:9px;padding:14px 16px;transition:background .3s,border-color .3s}
+.ret-when{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:3px}
+.ret-what{font-size:13px;font-weight:500;color:var(--ink);letter-spacing:-.005em}
+.ret-det{font-size:11px;color:var(--ink-3);margin-top:4px}
+
+/* ---- CUE ---- */
+.cue{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:500;color:var(--ink-3);
+    background:var(--surface-2);border:1px dashed var(--line);padding:1px 6px;border-radius:3px;cursor:help;
+    margin-left:6px;position:relative;letter-spacing:.01em}
+.cue::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--accent)}
+.cue-tip{position:absolute;bottom:calc(100% + 6px);right:0;width:260px;padding:10px 12px;
+    background:var(--ink);color:var(--bg);font-size:11px;line-height:1.5;border-radius:7px;
+    opacity:0;visibility:hidden;transition:opacity .15s;z-index:10;font-weight:400;text-transform:none;letter-spacing:0;
+    box-shadow:0 6px 20px rgba(20,19,15,.15)}
+.cue-tip::after{content:'';position:absolute;top:100%;right:12px;border:4px solid transparent;border-top-color:var(--ink)}
+.cue:hover .cue-tip{opacity:1;visibility:visible}
+
+/* ---- STRAT SIDEBAR ---- */
+.strat-ov{position:fixed;inset:0;background:rgba(20,19,15,.5);opacity:0;visibility:hidden;transition:opacity .25s,visibility .25s;z-index:100}
+.strat-ov.on{opacity:1;visibility:visible}
+.strat-p{position:fixed;top:0;right:0;width:min(520px,100vw);height:100vh;background:var(--surface);
+    z-index:101;transform:translateX(100%);transition:transform .3s var(--ease),background .3s;
+    display:flex;flex-direction:column;box-shadow:-8px 0 40px rgba(20,19,15,.1)}
+.strat-p.on{transform:none}
+.strat-hd{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+.strat-hd h3{font-size:16px;font-weight:600}
+.strat-x{background:none;border:none;font-size:22px;color:var(--ink-3);cursor:pointer}
+.strat-x:hover{color:var(--ink)}
+.strat-bd{flex:1;overflow-y:auto;padding:18px 22px}
+.sb{margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid var(--line)}
+.sb:last-child{border-bottom:none;margin-bottom:0}
+.sb .why{font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin-bottom:4px}
+.sb h4{font-size:13px;font-weight:600;margin-bottom:5px}
+.sb p{font-size:12.5px;color:var(--ink-2);line-height:1.55;margin-bottom:4px}
+.sb .lc{font-size:11px;color:var(--ink-3);margin-top:6px;padding-top:6px;border-top:1px dashed var(--line);font-style:italic}
+.sb .lc b{color:var(--ink);font-style:normal}
+
+@media(max-width:900px){
+  .app{grid-template-columns:1fr}.rail{display:none}
+  .g2{grid-template-columns:1fr}.deltas,.ret{grid-template-columns:1fr}
+  .llm-cmp{grid-template-columns:1fr}.doors{grid-template-columns:1fr}
+  .dash-main{padding:20px 18px 40px}
+}
+</style>
+</head>
+<body>
+
+<!-- ===================== SCREEN 1: GATE ===================== -->
+<div class="scr on" id="s-gate">
+  <div class="gate">
+    <div class="gate-badge">
+      <svg width="20" height="20" viewBox="0 0 22 22"><circle cx="11" cy="11" r="10" fill="none" stroke="#d2cec5" stroke-width=".8"/><circle cx="11" cy="11" r="6.5" fill="none" stroke="#b8760f" stroke-width="1"/><circle cx="11" cy="11" r="2.5" fill="#14130f"/></svg>
+      Lighthouse
+    </div>
+    <h1>Which door are you walking through?</h1>
+    <p class="sub">How Lighthouse helps depends on where you are. Pick the one that fits.</p>
+    <div class="doors">
+      <div class="door" id="d-run" onclick="pickDoor(this)">
+        <div class="door-h">I already run a business</div>
+        <div class="door-p">There is a website, listings or reviews out there already. We sweep everything publicly visible and show you where your own signals have drifted apart.</div>
+      </div>
+      <div class="door off">
+        <div class="door-off">Coming soon</div>
+        <div class="door-h">I am planning a business</div>
+        <div class="door-p">A step-by-step guide for the most important things to get right before you launch, and a place to report what happened so the next step stays specific.</div>
+      </div>
+    </div>
+    <button class="gate-go" id="gateGo" disabled onclick="show('s-challenge')">Continue</button>
+    <p class="gate-test">Already on the Watch? <a href="#" onclick="show('s-dash');return false">Open your dashboard</a></p>
+  </div>
+</div>
+
+<!-- ===================== SCREEN 2: CHALLENGE ===================== -->
+<div class="scr" id="s-challenge">
+  <div class="challenge">
+    <button class="ch-back" onclick="show('s-gate')">&larr; Back</button>
+    <h2>What are you trying to figure out?</h2>
+    <p class="ch-sub">Describe the problem, the question, or the thing that has been bothering you. Write it however it comes to you.</p>
+    <div class="ch-field">
+      <label>Your challenge</label>
+      <textarea placeholder="e.g. Our ads spend doubled last quarter but orders barely moved. I don't know if it's the targeting or the offer itself."></textarea>
+    </div>
+    <div class="ch-field">
+      <label>Business name</label>
+      <input type="text" value="Kaarigar Home">
+    </div>
+    <div class="ch-field">
+      <label>Website</label>
+      <input type="url" value="kaarigarhome.com">
+    </div>
+    <div class="ch-hint">Optional fields make the answer more specific but are not required.</div>
+    <div class="ch-tier">
+      <div class="tier-card off">
+        <div class="tier-name">Sweep (free)</div>
+        <div class="tier-desc">One scan, one read, session only.</div>
+        <div class="tier-off">Not available in this build.</div>
+      </div>
+      <div class="tier-card picked">
+        <div class="tier-name">the Watch (paid)</div>
+        <div class="tier-desc">Full read, corrections persist, weekly sweeps, AEO, peer watch, meetings.</div>
+      </div>
+    </div>
+    <button class="gate-go" onclick="show('s-answer')" style="width:100%">Show me the answer</button>
+  </div>
+</div>
+
+<!-- ===================== SCREEN 3: FIRST ANSWER ===================== -->
+<div class="scr" id="s-answer">
+  <div class="answer-wrap">
+    <div class="ans-tag">First answer for Kaarigar Home</div>
+    <h2>Your ad spend doubled but orders barely moved. Here is what the signals say.</h2>
+    <p class="ans-sub">This answer has seven layers. Each one adds a dimension that a generic LLM response would skip. Scroll through them.</p>
+
+    <div class="layer">
+      <div class="layer-num">1 · Position</div>
+      <div class="layer-h">The constraint is more likely offer-audience fit than ad mechanics (targeting)</div>
+      <div class="layer-body">Spend rose across the same audiences with the same offer, and the drop is in conversion (people who see it but do not buy), not reach (people who see it at all). This pattern points at the message, not the media. <span class="ev-state">SOLID</span></div>
+    </div>
+    <div class="layer">
+      <div class="layer-num">2 · Why</div>
+      <div class="layer-h">Doubling spend into unchanged targeting usually moves impressions before it moves orders</div>
+      <div class="layer-body">Your symptom pattern matches: impressions up, CTR flat, conversion down. The audience is seeing more of the same thing and responding less. That is a message fatigue signal, not a targeting failure. <span class="jargon">(CTR = click-through rate, the % of people who click after seeing)</span></div>
+    </div>
+    <div class="layer">
+      <div class="layer-num">3 · Source and evidence state</div>
+      <div class="layer-h">Founder-stated figures, unverified</div>
+      <div class="layer-body">Evidence state: provisional <span class="ev-state fog">PROVISIONAL</span>. You shared the numbers but we have not seen the raw data yet. No metric definitions supplied. "Orders" could mean different things depending on how your system counts them.</div>
+    </div>
+    <div class="layer">
+      <div class="layer-num">4 · Assumed / unknown</div>
+      <div class="layer-h">Two things we assumed and one we cannot see</div>
+      <div class="layer-body">Assumed: your tracking did not change mid-quarter. Assumed: "doubled" means roughly 2x, not a budget reallocation across channels. Unknown: your conversion definition and denominator <span class="jargon">(denominator = what you are dividing by to calculate the rate)</span>. <span class="ev-state fog">FOG</span></div>
+    </div>
+    <div class="layer">
+      <div class="layer-num">5 · The smallest decisive question</div>
+      <div class="layer-h">Before recommending a cut, one question changes everything</div>
+      <div class="layer-body">Is "orders" here first-time customers, or all orders including repeats? If repeats are holding steady and new customer orders dropped, the problem is acquisition messaging. If both dropped, the problem is broader.</div>
+    </div>
+    <div class="layer">
+      <div class="layer-num">6 · Proposed first move</div>
+      <div class="layer-h">Do not cut spend yet. Pull one report first.</div>
+      <div class="layer-body">Split orders by new vs. returning for the two quarters. That single split changes which lever matters. If new customer orders dropped while repeat held, your ad creative is the problem. If both dropped, your product page or pricing drifted. One report, one answer.</div>
+    </div>
+    <div class="layer">
+      <div class="layer-num">7 · First record</div>
+      <div class="layer-h">Filed to your Watch</div>
+      <div class="layer-body">This position, two assumptions, one open question, and one proposed move are now in your Watch. When you come back with the new-vs-returning split, the next answer will be sharper because it builds on what was already established here.</div>
+    </div>
+
+    <!-- Voice bar -->
+    <div class="ans-voice">
+      <button class="v-play" onclick="this.classList.toggle('playing')">
+        <svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor"><path d="M3 2v8l6-4z"/></svg>
+      </button>
+      <div class="v-info">
+        <div class="v-title">Listen to this answer</div>
+        <div class="v-meta">2 min 40 sec · Indian English</div>
+      </div>
+      <div class="v-speeds">
+        <button class="spd on">1.5x</button>
+        <button class="spd" onclick="this.parentNode.querySelector('.on')?.classList.remove('on');this.classList.add('on')">2x</button>
+      </div>
+      <span class="lang-tag">Hindi coming via Sarvam</span>
+    </div>
+
+    <!-- LLM Trust comparison (compact) -->
+    <div class="ans-trust">
+      <div class="trust-pill"><span class="tp-dot close"></span> Claude: partially aligned</div>
+      <div class="trust-pill"><span class="tp-dot diff"></span> ChatGPT: generic advice</div>
+      <div class="trust-pill"><span class="tp-dot close"></span> Gemini: partially aligned</div>
+    </div>
+    <p style="font-size:11.5px;color:var(--ink-3);text-align:center;margin-top:8px">LLMs gave category-level advice. This answer is grounded in your specific challenge and evidence state.</p>
+
+    <!-- CTA -->
+    <div class="ans-cta">
+      <button class="ans-cta-btn" onclick="show('s-dash')">Enter the Watch dashboard &rarr;</button>
+      <p class="ans-cta-note">Your answer is already saved. The Watch starts learning from here.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== SCREEN 4: DASHBOARD ===================== -->
+<div class="scr no-center" id="s-dash">
+<div class="app">
+
+  <!-- LEFT RAIL -->
+  <aside class="rail">
+    <div class="brand">
+      <div class="lamp lit" title="Watch is active" onclick="this.classList.toggle('lit')">
+        <div class="l-outer"></div><div class="l-mid"></div><div class="l-core"></div>
+      </div>
+      <span class="brand-name">Lighthouse</span>
+      <span class="watch-chip">Watch</span>
+      <span class="paid-tag">Paid</span>
+    </div>
+    <div class="biz-card">
+      <div class="biz-name">Kaarigar Home</div>
+      <div class="biz-cat">Handloom home textiles</div>
+    </div>
+    <nav class="nav">
+      <button class="nav-item active" data-v="v-overview">Overview</button>
+      <button class="nav-item" data-v="v-aeo">AEO tracker <span class="n-badge">3</span></button>
+      <button class="nav-item" data-v="v-llm">LLM check</button>
+      <button class="nav-item" data-v="v-decisions">Decisions <span class="n-badge">2</span></button>
+      <button class="nav-item" data-v="v-notes">Notes</button>
+      <button class="nav-item" data-v="v-peers">Peers <span class="n-badge">3</span></button>
+      <button class="nav-item" data-v="v-meetings">Meetings</button>
+    </nav>
+    <div class="rail-foot">
+      <button class="rf"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 2"/></svg> Next sweep: Mon 4:00</button>
+      <button class="dm-toggle" onclick="document.documentElement.classList.toggle('dark')">
+        <div class="dm-switch"></div> Dark mode
+      </button>
+      <button class="rf" onclick="openStrat()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg> Why these features</button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="dash-main">
+    <div class="dash-head">
+      <div class="dh-left">
+        <div class="dh-date">Monday, 10 August 2026</div>
+        <h1>Good morning, Ishaan.</h1>
+        <p class="dh-line">Three signals shifted since Tuesday. Your ad-spend analysis is waiting for the new-vs-returning split you promised. One heading is ready.</p>
+      </div>
+    </div>
+
+    <!-- ===== VIEW: OVERVIEW ===== -->
+    <div class="view on" id="v-overview">
+      <div class="hero">
+        <div class="hero-inner">
+          <div class="hero-label">
+            <span class="hero-tag">This week's heading</span>
+            <span class="hero-week">Week of 10 Aug</span>
+          </div>
+          <h2>Move your provenance <span class="jargon">(origin story)</span> from the About page to your homepage hero.</h2>
+          <p class="hero-why">Kaarigar's strongest signal (weaver-attributed products) is buried three clicks deep, while your homepage leads with a generic "handcrafted" line that four peers also use. Fixing this once fixes drift, AEO ranking, and category confusion at the same time.</p>
+          <div class="hero-acts">
+            <button class="h-btn h-btn-p">Accept as this week's move</button>
+            <button class="h-btn h-btn-g">See the reasoning</button>
+          </div>
+          <div class="hero-ev">
+            <span class="ev-state">SOLID</span>
+            Drawn from 3 drifts, 1 AEO gap, and your correction on 4 Aug
+          </div>
+        </div>
+      </div>
+
+      <div class="deltas">
+        <div class="d-card">
+          <div class="d-head"><span class="d-arr up">&uarr;</span><span class="d-src">Google reviews</span></div>
+          <div class="d-hl">7 new reviews mention "durable"</div>
+          <div class="d-det">A word you have not used on your site. Copy opportunity.</div>
+          <div class="d-since">Since Tue 5 Aug</div>
+        </div>
+        <div class="d-card">
+          <div class="d-head"><span class="d-arr dn">&darr;</span><span class="d-src">Instagram</span></div>
+          <div class="d-hl">Reach down 22% on process reels</div>
+          <div class="d-det">Product photography held steady. The format, not the brand, is the variable.</div>
+          <div class="d-since">Since Tue 5 Aug</div>
+        </div>
+        <div class="d-card">
+          <div class="d-head"><span class="d-arr fl">&#8226;</span><span class="d-src">Peers</span></div>
+          <div class="d-hl">JaipurLiving launched a heritage line</div>
+          <div class="d-det">Direct overlap with your positioning. See Peers view for context.</div>
+          <div class="d-since">Fri 8 Aug</div>
+        </div>
+      </div>
+
+      <div class="g2">
+        <div class="g2-left">
+          <!-- VOICE -->
+          <div class="pan">
+            <div class="pan-h"><div class="pan-t"><div class="pan-ey">Voice read</div><h3 class="pan-hh">This week's full read</h3></div></div>
+            <div class="pan-b">
+              <div class="voice-c">
+                <button class="v-play"><svg width="11" height="11" viewBox="0 0 12 12" fill="currentColor"><path d="M3 2v8l6-4z"/></svg></button>
+                <div class="v-info"><div class="v-title">Positioning, drifts, evidence, heading</div><div class="v-meta">4 min 12 sec · Indian English</div></div>
+                <div class="v-speeds"><button class="spd on">1.5x</button><button class="spd">2x</button></div>
+                <span class="lang-tag">Hindi via Sarvam</span>
+              </div>
+            </div>
+          </div>
+          <!-- COMPOUNDING -->
+          <div class="pan">
+            <div class="pan-h"><div class="pan-t"><div class="pan-ey">Compounding</div><h3 class="pan-hh">Your Watch is learning</h3></div></div>
+            <div class="pan-b">
+              <div class="comp"><div class="comp-n">7</div><div class="comp-txt">recommendations reshaped by <b>3 corrections</b> you made in the last 30 days</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="g2-right">
+          <!-- DECISIONS (compact) -->
+          <div class="pan">
+            <div class="pan-h"><div class="pan-t"><div class="pan-ey">Decisions</div><h3 class="pan-hh">2 active</h3></div><button class="pan-act" onclick="switchView('v-decisions')">View all &rarr;</button></div>
+            <div class="pan-b">
+              <div class="dec-list">
+                <div class="dec"><div class="dec-dot ok"></div><div><div class="dec-t">Consolidate positioning to weaver story</div><div class="dec-m">Accepted 4 Aug</div></div></div>
+                <div class="dec"><div class="dec-dot wait"></div><div><div class="dec-t">Move homepage hero to provenance-first</div><div class="dec-m">This week's heading</div></div></div>
+                <div class="dec"><div class="dec-dot rev"></div><div><div class="dec-t">Pause paid social 30 days</div><div class="dec-m">Outcome review Fri</div></div></div>
+              </div>
+            </div>
+          </div>
+          <!-- NOTES (compact) -->
+          <div class="pan">
+            <div class="pan-h"><div class="pan-t"><div class="pan-ey">Notes</div><h3 class="pan-hh">Recent</h3></div><button class="pan-act" onclick="switchView('v-notes')">All notes &rarr;</button></div>
+            <div class="pan-b">
+              <div class="note"><div class="note-ctx">On: Paid social pause</div><div class="note-body">Warehouse team wants to reallocate Rs 40k to packaging redesign.</div><div class="note-date">6 Aug</div></div>
+              <button class="note-add">+ Add note</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="ret">
+        <div class="ret-c"><div class="ret-when">Next sweep</div><div class="ret-what">Monday, 17 August</div><div class="ret-det">Auto-refreshes signals + AEO</div></div>
+        <div class="ret-c"><div class="ret-when">Decision review</div><div class="ret-what">Friday, 14 August</div><div class="ret-det">Paid social pause outcome check</div></div>
+        <div class="ret-c"><div class="ret-when">Weekly digest</div><div class="ret-what">Monday 9:00 inbox</div><div class="ret-det">Or Slack. Change in Settings.</div></div>
+      </div>
+    </div>
+
+    <!-- ===== VIEW: AEO ===== -->
+    <div class="view" id="v-aeo">
+      <div class="pan">
+        <div class="pan-h"><div class="pan-t"><div class="pan-ey">AEO tracker</div><h3 class="pan-hh">Where you show up when someone asks Claude, ChatGPT, or Gemini about your category<span class="cue">Why AEO<span class="cue-tip">Founders are starting to feel this: "when a buyer asks Claude for a brand like mine, do I even come up?" No LLM can answer this about itself. This tracking layer is a real moat.</span></span></h3><p class="pan-sub">5 queries a buyer in your category would actually ask. Refreshed weekly.</p></div></div>
+        <div class="pan-b">
+          <table class="aeo-t">
+            <thead><tr><th>Query</th><th>Claude</th><th>ChatGPT</th><th>Gemini</th></tr></thead>
+            <tbody>
+              <tr><td class="aeo-q">Best handloom home textile brands India<span class="peers">Top: JaipurLiving, FabIndia, HaathiChap</span></td><td><span class="rk low">#9</span></td><td><span class="rk low">#12</span></td><td><span class="rk none">&mdash;</span></td></tr>
+              <tr><td class="aeo-q">Where to buy weaver-attributed home linen<span class="peers">Top: JaipurLiving, Okhai</span></td><td><span class="rk mid">#4</span></td><td><span class="rk mid">#5</span></td><td><span class="rk low">#8</span></td></tr>
+              <tr><td class="aeo-q">Sustainable Indian home decor D2C<span class="peers">Top: NoNasties, Doodlage</span></td><td><span class="rk none">&mdash;</span></td><td><span class="rk none">&mdash;</span></td><td><span class="rk none">&mdash;</span></td></tr>
+              <tr><td class="aeo-q">Jaipur handmade home goods online<span class="peers">Top: JaipurLiving</span></td><td><span class="rk top">#2</span></td><td><span class="rk mid">#6</span></td><td><span class="rk mid">#4</span></td></tr>
+              <tr><td class="aeo-q">Gifts made by Indian artisans<span class="peers">Top: Okhai, JaipurLiving</span></td><td><span class="rk low">#11</span></td><td><span class="rk low">#14</span></td><td><span class="rk none">&mdash;</span></td></tr>
+            </tbody>
+          </table>
+          <div class="aeo-fix">
+            <div class="aeo-fix-h">Two moves that would shift your rank:</div>
+            <ol>
+              <li>Add "weaver names" schema <span class="jargon">(structured data)</span> to product page metadata. This is the only signal peers above you have that you do not.</li>
+              <li>Publish one page titled "Sustainable Indian home decor" using the exact query. Gemini and ChatGPT both index title-match strongly for this category.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== VIEW: LLM CHECK ===== -->
+    <div class="view" id="v-llm">
+      <div class="pan">
+        <div class="pan-h"><div class="pan-t"><div class="pan-ey">LLM check</div><h3 class="pan-hh">What other LLMs say about this week's heading, and how close they get<span class="cue">Why compare<span class="cue-tip">Founders will ask Claude anyway. Showing the comparison openly, with a trust score, turns LLMs into validation for us rather than competitors.</span></span></h3><p class="pan-sub">Same question, three engines. Trust score = how aligned with your Watch context.</p></div></div>
+        <div class="pan-b">
+          <div class="llm-tabs">
+            <button class="llm-tab on" onclick="switchLLM(this,0)">Claude</button>
+            <button class="llm-tab" onclick="switchLLM(this,1)">ChatGPT</button>
+            <button class="llm-tab" onclick="switchLLM(this,2)">Gemini</button>
+          </div>
+          <div class="llm-cmp">
+            <div class="llm-a"><div class="llm-ah" id="llm-name">Claude says</div><p id="llm-txt">Focus on paid social and influencer marketing to build awareness. Expand your Instagram calendar and run targeted Facebook ads.</p></div>
+            <div class="llm-a us"><div class="llm-ah">Lighthouse says</div><p>Move your provenance story from About to homepage hero. Do not spend more on paid social until your organic signal is coherent.</p></div>
+          </div>
+          <div class="llm-trust" id="llm-trust-row">
+            <div class="t-score"><span class="t-dot close"></span> Claude: 4/10 aligned</div>
+            <div class="t-score"><span class="t-dot diff"></span> ChatGPT: 2/10 aligned</div>
+            <div class="t-score"><span class="t-dot close"></span> Gemini: 3/10 aligned</div>
+          </div>
+          <div class="llm-why">
+            <b>Why the gap:</b> LLMs answer from category patterns (what works for D2C brands generally). Lighthouse answers from your specific Watch: three drifts, your correction history, and the AEO gap. Claude does not know you already tried paid social and called it a leaky bucket on 4 August.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== VIEW: DECISIONS ===== -->
+    <div class="view" id="v-decisions">
+      <div class="pan">
+        <div class="pan-h"><div class="pan-t"><div class="pan-ey">Decision log</div><h3 class="pan-hh">Every decision, its status, and when it comes up for review<span class="cue">Why log<span class="cue-tip">Over three months, this becomes the founder's actual operating record. LLMs forget what you decided. The Watch remembers.</span></span></h3></div></div>
+        <div class="pan-b">
+          <div class="dec-list">
+            <div class="dec"><div class="dec-dot ok"></div><div><div class="dec-t">Consolidate positioning to weaver-attributed story</div><div class="dec-m">Accepted 4 Aug · outcome review 4 Sep</div></div></div>
+            <div class="dec"><div class="dec-dot wait"></div><div><div class="dec-t">Move homepage hero to provenance-first</div><div class="dec-m">Pending · this week's heading</div></div></div>
+            <div class="dec"><div class="dec-dot rev"></div><div><div class="dec-t">Pause paid social spend for 30 days</div><div class="dec-m">Under review · outcome check Fri 14 Aug</div></div></div>
+            <div class="dec"><div class="dec-dot ok"></div><div><div class="dec-t">Pull new-vs-returning order split for Q1 + Q2</div><div class="dec-m">Accepted 10 Aug · from first answer</div></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== VIEW: NOTES ===== -->
+    <div class="view" id="v-notes">
+      <div class="pan">
+        <div class="pan-h"><div class="pan-t"><div class="pan-ey">Notes</div><h3 class="pan-hh">Tied to decisions, not floating<span class="cue">Why contextual<span class="cue-tip">Notes attached to a decision resurface when that decision comes up for review. A floating note is lost within a week.</span></span></h3></div></div>
+        <div class="pan-b">
+          <div class="note-tabs">
+            <button class="note-tab on" onclick="switchNoteTab(this,'self')">Self</button>
+            <button class="note-tab" onclick="switchNoteTab(this,'team')">Team</button>
+          </div>
+          <div class="notes" id="notes-self">
+            <div class="note"><div class="note-ctx">On: Positioning consolidation</div><div class="note-body">Test new hero copy with three actual buyers before rolling out. Riya's contact has two who would give honest feedback.</div><div class="note-date">4 Aug</div></div>
+            <div class="note"><div class="note-ctx">On: Paid social pause</div><div class="note-body">Warehouse team wants to reallocate Rs 40k to packaging redesign. Track separately, do not mix with ad savings.</div><div class="note-date">6 Aug</div></div>
+            <div class="note"><div class="note-ctx">On: Ad spend analysis</div><div class="note-body">Pull the new-vs-returning split from Shopify before Friday. Ask Arjun to run it.</div><div class="note-date">10 Aug</div></div>
+          </div>
+          <div class="notes" id="notes-team" style="display:none">
+            <div class="note"><div class="note-ctx">From: Meera (ops)</div><div class="note-body">Packaging samples arrive Wed. Need sign-off by Thursday evening or we miss the print run.</div><div class="note-date">9 Aug</div></div>
+            <div class="note"><div class="note-ctx">From: Arjun (marketing)</div><div class="note-body">Instagram reach data pulled. Process reels are down but product shots are flat. Sharing the sheet.</div><div class="note-date">8 Aug</div></div>
+          </div>
+          <button class="note-add">+ Add note to a decision</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== VIEW: PEERS ===== -->
+    <div class="view" id="v-peers">
+      <div class="pan">
+        <div class="pan-h"><div class="pan-t"><div class="pan-ey">Peer watch</div><h3 class="pan-hh">This week in your category<span class="cue">Why peers<span class="cue-tip">Founders scroll competitors at 11pm. This does the same job weekly, only signals that could affect your positioning, framed by what to do about it.</span></span></h3><p class="pan-sub">3 peers you track. Only positioning-relevant signals.</p></div><button class="pan-act">Manage peers &rarr;</button></div>
+        <div class="pan-b">
+          <div class="peer"><div class="peer-ic">JL</div><div class="peer-b"><div class="peer-nr"><div class="peer-n">JaipurLiving</div><span class="peer-tag launch">Launch</span></div><div class="peer-chg">Launched a "heritage" line with weaver-attribution as the lead story. Direct overlap with your strongest signal. They got there first with the story you have not told yet.</div><div class="peer-w">Fri 8 Aug</div></div></div>
+          <div class="peer"><div class="peer-ic">OK</div><div class="peer-b"><div class="peer-nr"><div class="peer-n">Okhai</div><span class="peer-tag pricing">Pricing</span></div><div class="peer-chg">Raised entry SKU prices by 12%. Positioning language shifted from "affordable" to "considered". Category trending premium.</div><div class="peer-w">Wed 6 Aug</div></div></div>
+          <div class="peer"><div class="peer-ic">HC</div><div class="peer-b"><div class="peer-nr"><div class="peer-n">HaathiChap</div><span class="peer-tag press">Press</span></div><div class="peer-chg">Vogue India home issue feature. Angle: "small Indian brands doing better craft storytelling than legacy names." You are not in it, but the argument favors your positioning.</div><div class="peer-w">Thu 7 Aug</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== VIEW: MEETINGS ===== -->
+    <div class="view" id="v-meetings">
+      <div class="pan">
+        <div class="pan-h"><div class="pan-t"><div class="pan-ey">Meetings</div><h3 class="pan-hh">This week's calendar<span class="cue">Why meetings<span class="cue-tip">An "all in one place" tool must include the meetings where decisions actually happen. Agenda, notes, and action items tied back to the Watch means nothing gets lost between the call and the dashboard.</span></span></h3></div></div>
+        <div class="pan-b">
+          <div class="mtg"><div class="mtg-time">10:00</div><div class="mtg-b"><div class="mtg-t">Weekly strategy sync</div><div class="mtg-d">Ishaan + Meera + Arjun · 30 min</div><div class="mtg-tags"><span class="mtg-tag">Agenda: Homepage hero decision</span><span class="mtg-tag">Paid social review</span></div></div></div>
+          <div class="mtg"><div class="mtg-time">14:30</div><div class="mtg-b"><div class="mtg-t">Packaging redesign review</div><div class="mtg-d">Ishaan + Meera · 20 min</div><div class="mtg-tags"><span class="mtg-tag">Linked: Rs 40k reallocation note</span></div></div></div>
+          <div class="mtg"><div class="mtg-time">Thu 11:00</div><div class="mtg-b"><div class="mtg-t">Buyer feedback call (Riya's contacts)</div><div class="mtg-d">Ishaan · 45 min</div><div class="mtg-tags"><span class="mtg-tag">Linked: Hero copy test note</span><span class="mtg-tag">Record + transcribe</span></div></div></div>
+          <button class="gcal-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+            Connect Google Calendar
+          </button>
+          <p style="font-size:11px;color:var(--ink-4);margin-top:8px">Meetings with agenda and action items are auto-linked to decisions. Recording and transcription available during calls.</p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+</div>
+
+<!-- ===== STRATEGY SIDEBAR ===== -->
+<div class="strat-ov" id="stratOv" onclick="closeStrat()"></div>
+<aside class="strat-p" id="stratP">
+  <div class="strat-hd"><h3>Why these features exist</h3><button class="strat-x" onclick="closeStrat()">&times;</button></div>
+  <div class="strat-bd">
+    <div style="padding:12px 14px;background:var(--accent-tint);border:1px solid var(--accent-line);border-radius:7px;font-size:12.5px;color:var(--ink-2);line-height:1.55;margin-bottom:16px"><b>For the team.</b> Every feature exists because it does something a general LLM cannot, or something the founder would not open a chat window to ask for.</div>
+
+    <div class="sb"><div class="why">7-layer first answer</div><h4>Output quality as the conversion mechanism</h4><p>The first answer is not a summary. It has layers: Position, Why, Evidence state, Assumptions/unknowns, Decisive question, Proposed move, Filed record. This structure beats randomness, every answer has the same rigor. A founder reads this and knows the tool is thinking differently.</p><p class="lc"><b>What LLMs skip:</b> assumptions, unknowns, evidence grading, and the decisive question. LLMs jump to advice. We stop before the advice and show the founder what they do not yet know.</p></div>
+
+    <div class="sb"><div class="why">This week's heading</div><h4>45 seconds to value</h4><p>A founder opens the tool on Monday morning. If they see data, they close it. One clear "do this" gets acted on. This card forces the product to have a POV every week.</p><p class="lc"><b>What LLMs skip:</b> synthesizing private history + corrections + public signals into one bespoke weekly move.</p></div>
+
+    <div class="sb"><div class="why">AEO tracker</div><h4>The feature LLMs fundamentally cannot provide</h4><p>"When someone asks Claude for a brand like mine, do I even come up?" No LLM will answer this about itself. This single panel converts to Watch on its own.</p><p class="lc"><b>What LLMs skip:</b> self-awareness. They cannot tell you where you rank on them.</p></div>
+
+    <div class="sb"><div class="why">LLM check with trust scores</div><h4>Show the comparison, own the gap</h4><p>Instead of hiding from LLMs, we show what they say next to our answer and score alignment. Low scores prove that generic advice misses context. The trust score (X/10 aligned) makes the gap measurable.</p><p class="lc"><b>What LLMs skip:</b> the founder's correction history, their Watch context, their specific decisions.</p></div>
+
+    <div class="sb"><div class="why">Voice read (Indian English + Hindi via Sarvam)</div><h4>Screen time is a barrier for Indian founders</h4><p>Founders drive between warehouses, take calls, walk factories. Voice in Indian English (not American or synthetic) signals "this product knows who it is for." Hindi option via Sarvam AI's Bulbul TTS adds regional comfort.</p><p class="lc"><b>What LLMs skip:</b> calibrated business narration in Indian accents.</p></div>
+
+    <div class="sb"><div class="why">Notes (Self + Team tabs)</div><h4>Contextual, not floating</h4><p>Notes tied to decisions resurface when that decision is reviewed. Self tab = founder's private thinking. Team tab = shared with ops/marketing. Fewer notes, each with a job.</p><p class="lc"><b>What LLMs skip:</b> connecting a July note to an October review.</p></div>
+
+    <div class="sb"><div class="why">Meetings</div><h4>Where decisions actually happen</h4><p>Google Calendar connect, agendas linked to decisions, recording + transcription. When the weekly sync ends, action items flow back into the Watch. No separate meeting tool needed.</p><p class="lc"><b>What LLMs skip:</b> knowing what was discussed in last Tuesday's call.</p></div>
+
+    <div class="sb"><div class="why">Peer watch</div><h4>3 competitors, only positioning-relevant moves</h4><p>Not a feed. Not 20 competitors. Three peers, weekly, only what could affect your positioning. Framed by what to do about it.</p><p class="lc"><b>What LLMs skip:</b> monitoring named peers over time and connecting to this founder's strategy.</p></div>
+
+    <div class="sb"><div class="why">Compounding indicator</div><h4>Make the moat visible</h4><p>"7 recommendations reshaped by 3 corrections." One number that proves corrections compound. Abstract moat becomes tangible.</p><p class="lc"><b>What LLMs skip:</b> showing how past input shaped today's answer.</p></div>
+
+    <div class="sb"><div class="why">Dark mode + lamp toggle</div><h4>Small details that signal craft</h4><p>Dark mode for night sessions (founders work late). The lighthouse lamp glows when the Watch is active; clicking it is a visual toggle. Not a mascot, not a toy. A status indicator with personality.</p></div>
+  </div>
+</aside>
+
+<script>
+/* ===== SCREEN SWITCHING ===== */
+function show(id){
+  document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('on')});
+  document.getElementById(id).classList.add('on');
+  window.scrollTo(0,0);
+}
+
+/* ===== GATE ===== */
+function pickDoor(el){
+  document.querySelectorAll('.door').forEach(function(d){d.classList.remove('picked')});
+  el.classList.add('picked');
+  document.getElementById('gateGo').disabled=false;
+}
+
+/* ===== NAV VIEW SWITCHING ===== */
+function switchView(vid){
+  document.querySelectorAll('.view').forEach(function(v){v.classList.remove('on')});
+  document.getElementById(vid).classList.add('on');
+  document.querySelectorAll('.nav-item').forEach(function(n){n.classList.remove('active')});
+  document.querySelector('[data-v="'+vid+'"]').classList.add('active');
+}
+document.querySelectorAll('.nav-item').forEach(function(item){
+  item.addEventListener('click',function(){switchView(this.getAttribute('data-v'))});
+});
+
+/* ===== LLM CHECK ===== */
+var llmData=[
+  {name:'Claude says',txt:'Focus on paid social and influencer marketing to build awareness. Expand your Instagram calendar and run targeted Facebook ads.',score:'4/10'},
+  {name:'ChatGPT says',txt:'For a handloom textile brand, growth comes from paid social, marketplace listings, and influencer partnerships. Focus on product photography and lifestyle content.',score:'2/10'},
+  {name:'Gemini says',txt:'Standard recommendations: SEO optimization, content marketing about your artisan story, and email list building for retention.',score:'3/10'}
+];
+function switchLLM(btn,i){
+  document.querySelectorAll('.llm-tab').forEach(function(t){t.classList.remove('on')});
+  btn.classList.add('on');
+  document.getElementById('llm-name').textContent=llmData[i].name;
+  document.getElementById('llm-txt').textContent=llmData[i].txt;
+}
+
+/* ===== NOTES TABS ===== */
+function switchNoteTab(btn,tab){
+  document.querySelectorAll('.note-tab').forEach(function(t){t.classList.remove('on')});
+  btn.classList.add('on');
+  document.getElementById('notes-self').style.display=tab==='self'?'flex':'none';
+  document.getElementById('notes-team').style.display=tab==='team'?'flex':'none';
+}
+
+/* ===== STRATEGY SIDEBAR ===== */
+function openStrat(){document.getElementById('stratOv').classList.add('on');document.getElementById('stratP').classList.add('on');document.body.style.overflow='hidden'}
+function closeStrat(){document.getElementById('stratOv').classList.remove('on');document.getElementById('stratP').classList.remove('on');document.body.style.overflow=''}
+document.addEventListener('keydown',function(e){if(e.key==='Escape')closeStrat()});
+</script>
+</body>
+</html>
